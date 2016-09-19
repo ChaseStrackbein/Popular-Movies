@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- The entries for the Sort By preference which will be visible to the user -->
+    <string-array name="pref_sort_entries">
+        <item>Popular</item>
+        <item>Top Rated</item>
+    </string-array>
+
+    <!-- The actual values of the Sort By preference -->
+    <string-array name="pref_sort_values">
+        <item>popular</item>
+        <item>top rated</item>
+    </string-array>
+
+</resources>

@@ -1,0 +1,20 @@
+<resources>
+    <!-- Activity titles -->
+    <string name="app_name">Popular Movies</string>
+    <string name="settings_activity_name">Settings</string>
+    <string name="detail_activity_name">Details</string>
+
+    <!-- Possible error messages to display to the user -->
+    <string name="no_content">There is no content to display.</string>
+    <string name="no_connection">No internet connection.</string>
+
+    <!-- Menu item labels -->
+    <string name="settings_menu_item">Settings</string>
+
+    <!-- Preference labels -->
+    <string name="pref_category_search">Search Results</string>
+    <string name="pref_sort_by_label">Sort By</string>
+    <string name="pref_sort_by_key" translatable="false">sort</string>
+    <string name="pref_sort_by_default" translatable="false">popular</string>
+
+</resources>
