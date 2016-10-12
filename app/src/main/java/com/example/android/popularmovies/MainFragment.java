@@ -26,7 +26,7 @@ import java.util.List;
  * Fragment for handling the GridView used to display the Movie results from TheMovieDP API queries.
  *
  * @author Chase Strackbein
- * @version 1.0
+ * @version 1.1
  * @since 2016-09-29
  */
 
@@ -37,6 +37,8 @@ public class MainFragment extends Fragment implements LoaderManager.LoaderCallba
 
     private MovieAdapter mMovieAdapter;
     private GridView mGridView;
+    private NetworkInfo mNetworkInfo;
+    private ConnectivityManager mConnMgr;
 
     private int mPosition = GridView.INVALID_POSITION;
 
@@ -74,56 +76,51 @@ public class MainFragment extends Fragment implements LoaderManager.LoaderCallba
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
 
-        // Retrieve the connection info
-        ConnectivityManager connMgr = (ConnectivityManager) getActivity().getSystemService(
-                Context.CONNECTIVITY_SERVICE);
-        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-
         // The MovieAdapter will take data from out List of Movie objects and populate the GridView.
         mMovieAdapter = new MovieAdapter(getActivity(), new ArrayList<Movie>());
 
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
-        // If there is currently a network connection, populate the GridView
-        if(networkInfo != null && networkInfo.isConnected()) {
+        // Get a reference to the GridView, and attach this adapter to it.
+        mGridView = (GridView) rootView.findViewById(R.id.gridview);
+        mGridView.setAdapter(mMovieAdapter);
 
-            // Show the loading spinner while the information is being received
-            ProgressBar loadingBar = (ProgressBar) rootView.findViewById(R.id.loading_spinner);
-            loadingBar.setVisibility(View.VISIBLE);
-
-            // Get a reference to the GridView, and attach this adapter to it.
-            mGridView = (GridView) rootView.findViewById(R.id.gridview);
-            mGridView.setAdapter(mMovieAdapter);
-
-            // Attach an OnItemClickListener to the GridView to alert our MainActivity when
-            // a Movie has been selected
-            mGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    Movie movie = (Movie) parent.getItemAtPosition(position);
-                    if (movie != null) {
-                        ((Callback) getActivity()).onItemSelected(movie);
-                    }
+        // Attach an OnItemClickListener to the GridView to alert our MainActivity when
+        // a Movie has been selected
+        mGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Movie movie = (Movie) parent.getItemAtPosition(position);
+                mPosition = position;
+                if (movie != null) {
+                    ((Callback) getActivity()).onItemSelected(movie);
                 }
-            });
-
-            // If there's an instance state, mine it for the useful information.
-            // The end-goal here is that the user never knows that turning their device sideways
-            // does crazy lifecycle-related things. It should feel like some stuff stretched out,
-            // or magically appeared to take advantage of room, but data or place in the app was never
-            // actually lost
-            if (savedInstanceState != null && savedInstanceState.containsKey(SELECTED_KEY)) {
-                // The GridView probably hasn't even been populated yet. Actually perform the
-                // swapout in onLoadFinished
-                mPosition = savedInstanceState.getInt(SELECTED_KEY);
             }
-        } else {
-            // Else if there is no internet connection, display the no connection text
-            TextView noNetwork = (TextView) rootView.findViewById(R.id.no_connection_textview);
-            noNetwork.setVisibility(View.VISIBLE);
+        });
+
+        // If there's an instance state, mine it for the useful information.
+        // The end-goal here is that the user never knows that turning their device sideways
+        // does crazy lifecycle-related things. It should feel like some stuff stretched out,
+        // or magically appeared to take advantage of room, but data or place in the app was never
+        // actually lost
+        if (savedInstanceState != null && savedInstanceState.containsKey(SELECTED_KEY)) {
+            // The GridView probably hasn't even been populated yet. Actually perform the
+            // swapout in onLoadFinished
+            mPosition = savedInstanceState.getInt(SELECTED_KEY);
         }
 
+        // Retrieve the connection info
+        mConnMgr = (ConnectivityManager) getActivity().getSystemService(
+                Context.CONNECTIVITY_SERVICE);
+
+
         return rootView;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
     }
 
     /**
@@ -135,8 +132,21 @@ public class MainFragment extends Fragment implements LoaderManager.LoaderCallba
         mMovieAdapter = new MovieAdapter(getActivity(), movies);
         mGridView.setAdapter(mMovieAdapter);
 
-        // Set the empty view if there are no Movies to be displayed
-        mGridView.setEmptyView(getActivity().findViewById(R.id.no_content_textview));
+        if (mNetworkInfo != null && mNetworkInfo.isConnected()) {
+            // Set the empty view if there are no Movies to be displayed
+            mGridView.setEmptyView(getActivity().findViewById(R.id.no_content_textview));
+
+            TextView noNetwork = (TextView) getActivity().findViewById(R.id.no_connection_textview);
+            noNetwork.setVisibility(View.GONE);
+
+        } else {
+            // Else if there is no internet connection, display the no connection text
+            TextView noNetwork = (TextView) getActivity().findViewById(R.id.no_connection_textview);
+            noNetwork.setVisibility(View.VISIBLE);
+
+            TextView noContent = (TextView) getActivity().findViewById(R.id.no_content_textview);
+            noContent.setVisibility(View.GONE);
+        }
 
     }
 
@@ -153,42 +163,56 @@ public class MainFragment extends Fragment implements LoaderManager.LoaderCallba
 
     @Override
     public Loader<List<Movie>> onCreateLoader(int id, Bundle args) {
-        // Get the preferences
-        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
 
-        // Find out which method the user would like to sort by
-        String orderBy = sharedPrefs.getString(
-                getString(R.string.pref_sort_by_key),
-                getString(R.string.pref_sort_by_default)
-        );
+        mNetworkInfo = mConnMgr.getActiveNetworkInfo();
 
-        // String values to append to the request URL
-        final String API_KEY = "api_key";
-        final String API_VALUE = BuildConfig.TMDB_API_KEY;
-        final String MOVIE_DB_REQUEST_URL = "http://api.themoviedb.org/3/movie/";
-        final String POPULAR = "popular?";
-        final String TOP_RATED = "top_rated?";
+        // If there is currently a network connection, populate the GridView
+        if (mNetworkInfo != null && mNetworkInfo.isConnected()) {
+            // Show the loading spinner while the information is being received
+            ProgressBar loadingBar = (ProgressBar) getActivity().findViewById(R.id.loading_spinner);
+            loadingBar.setVisibility(View.VISIBLE);
 
-        // Initialize a StringBuilder using the base Movie DB API query URL
-        StringBuilder baseString = new StringBuilder(MOVIE_DB_REQUEST_URL);
+            // Get the preferences
+            SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
 
-        // If the sort by value is the default (Popular), append corresponding API query
-        if (orderBy.equals(getString(R.string.pref_sort_by_default))) {
-            baseString.append(POPULAR);
-        } else if (orderBy.equals("top rated")) {
-            // Else, apply the Top Rated API query
-            baseString.append(TOP_RATED);
+            // Find out which method the user would like to sort by
+            String orderBy = sharedPrefs.getString(
+                    getString(R.string.pref_sort_by_key),
+                    getString(R.string.pref_sort_by_default)
+            );
+
+            // String values to append to the request URL
+            final String API_KEY = "api_key";
+            final String API_VALUE = BuildConfig.TMDB_API_KEY;
+            final String MOVIE_DB_REQUEST_URL = "http://api.themoviedb.org/3/movie/";
+            final String POPULAR = "popular?";
+            final String TOP_RATED = "top_rated?";
+
+            // Initialize a StringBuilder using the base Movie DB API query URL
+            StringBuilder baseString = new StringBuilder(MOVIE_DB_REQUEST_URL);
+
+            // If the sort by value is the default (Popular), append corresponding API query
+            if (orderBy.equals(getString(R.string.pref_sort_by_default))) {
+                baseString.append(POPULAR);
+            } else if (orderBy.equals("top rated")) {
+                // Else, apply the Top Rated API query
+                baseString.append(TOP_RATED);
+            } else {
+                return new MovieLoader(getContext(), baseString.toString());
+            }
+
+            // Create a Uri and append the API key parameter
+            Uri baseUri = Uri.parse(baseString.toString());
+            Uri.Builder uriBuilder = baseUri.buildUpon().appendQueryParameter(API_KEY, API_VALUE);
+
+            // Return the MovieLoader using the URI API query
+            return new MovieLoader(getContext(), uriBuilder.toString());
+
         } else {
-            return new MovieLoader(getContext(), baseString.toString());
+            // Else if there is no internet connection, display the no connection text
+            // Return the MovieLoader using the URI API query
+            return new MovieLoader(getContext(), null);
         }
-
-        // Create a Uri and append the API key parameter
-        Uri baseUri = Uri.parse(baseString.toString());
-        Uri.Builder uriBuilder = baseUri.buildUpon().appendQueryParameter(API_KEY, API_VALUE);
-
-        // Return the MovieLoader using the URI API query
-        return new MovieLoader(getContext(), uriBuilder.toString());
-
     }
 
     @Override
@@ -208,6 +232,7 @@ public class MainFragment extends Fragment implements LoaderManager.LoaderCallba
 
     @Override
     public void onLoaderReset(Loader<List<Movie>> loader) {
+        mNetworkInfo = mConnMgr.getActiveNetworkInfo();
         // On loader reset, update the UI with an empty list of movies to refresh the list
         updateUi(new ArrayList<Movie>());
     }

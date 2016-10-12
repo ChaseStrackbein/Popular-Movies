@@ -13,7 +13,7 @@ import android.view.MenuItem;
  * pulled from The Movie DB and if in tablet mode will display the selected movie details, too.
  *
  * @author Chase Strackbein
- * @version 2.0
+ * @version 2.1
  * @since 2016-09-14
  */
 public class MainActivity extends AppCompatActivity implements
@@ -72,13 +72,17 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onResume() {
         super.onResume();
+
+        // When the app is resumed, reload the information in the MainFragment to take care of sort
+        // order change as well as network connectivity changes
+        MainFragment mainFragment = (MainFragment)getSupportFragmentManager().findFragmentById(R.id.fragment_main);
+        if (mainFragment != null) {
+            mainFragment.onSortOrderChanged();
+        }
+
+        // Only refresh the movie details if the sort order has changed
         String sortBy = Utility.getPreferredSort(this);
-        // Update the sort order and reflect changes in both the main and detail fragments
         if (sortBy != null && !sortBy.equals(mSortBy)) {
-            MainFragment mainFragment = (MainFragment)getSupportFragmentManager().findFragmentById(R.id.fragment_main);
-            if (mainFragment != null) {
-                mainFragment.onSortOrderChanged();
-            }
             DetailFragment detailFragment = (DetailFragment) getSupportFragmentManager().findFragmentByTag(DETAILFRAGMENT_TAG);
             if (detailFragment != null) {
                 // Clear out the previously selected movie

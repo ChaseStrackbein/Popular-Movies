@@ -3,6 +3,7 @@ package com.example.android.popularmovies;
 import android.content.Context;
 import android.support.v4.content.AsyncTaskLoader;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -38,7 +39,7 @@ public class MovieLoader extends AsyncTaskLoader<List<Movie>> {
     public List<Movie> loadInBackground() {
         // If the URL is empty, return null
         if (mUrl == null) {
-            return null;
+            return new ArrayList<>();
         }
         if (mUrl.contains("popular") || mUrl.contains("top_rated")) {
             // Return a list of Movie objects
