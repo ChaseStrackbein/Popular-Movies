@@ -44,4 +44,6 @@ public class MovieAdapter extends ArrayAdapter<Movie> {
 
         return listItemView;
     }
+
+
 }

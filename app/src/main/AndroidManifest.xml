@@ -21,6 +21,7 @@
         <activity
             android:name=".SettingsActivity"
             android:label="@string/settings_activity_name"
+            android:theme="@style/SettingsTheme"
             android:parentActivityName=".MainActivity" >
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"

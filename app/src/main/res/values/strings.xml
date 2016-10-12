@@ -7,6 +7,9 @@
     <!-- Possible error messages to display to the user -->
     <string name="no_content">There is no content to display.</string>
     <string name="no_connection">No internet connection.</string>
+    <string name="trailers_no_content">There are no trailers for this movie</string>
+    <string name="reviews_no_content">There are no reviews for this movie</string>
+    <string name="movie_details_no_content">Select a movie to view its details here.</string>
 
     <!-- Menu item labels -->
     <string name="settings_menu_item">Settings</string>
@@ -16,5 +19,14 @@
     <string name="pref_sort_by_label">Sort By</string>
     <string name="pref_sort_by_key" translatable="false">sort</string>
     <string name="pref_sort_by_default" translatable="false">popular</string>
+
+    <!-- Strings for Favorites -->
+    <string name="pref_fav_key">favorites</string>
+
+    <string name="trailers">Trailers:</string>
+    <string name="reviews">Reviews:</string>
+
+    <string name="favorite">Add Favorite</string>
+    <string name="unfavorite">Remove Favorite</string>
 
 </resources>

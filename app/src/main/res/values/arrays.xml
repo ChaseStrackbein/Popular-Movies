@@ -5,12 +5,14 @@
     <string-array name="pref_sort_entries">
         <item>Popular</item>
         <item>Top Rated</item>
+        <item>Favorites</item>
     </string-array>
 
     <!-- The actual values of the Sort By preference -->
     <string-array name="pref_sort_values">
         <item>popular</item>
         <item>top rated</item>
+        <item>favorites</item>
     </string-array>
 
 </resources>

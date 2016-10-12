@@ -1,179 +1,53 @@
 package com.example.android.popularmovies;
 
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.net.Uri;
-import android.preference.PreferenceManager;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.Loader;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.GridView;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * Main class for the Popular Movies app. Orchestrates populating the GridView with information
- * pulled from The Movie DB and allows pressing on a Movie to view its details
+ * Main class for the Popular Movies app. Orchestrates populating the MainFragment with information
+ * pulled from The Movie DB and if in tablet mode will display the selected movie details, too.
  *
  * @author Chase Strackbein
- * @version 1.0
+ * @version 2.0
  * @since 2016-09-14
  */
 public class MainActivity extends AppCompatActivity implements
-        LoaderManager.LoaderCallbacks<List<Movie>> {
+        MainFragment.Callback, DetailFragment.Callback {
 
-    private static final int MOVIE_LOADER_ID = 1;
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
-    private SharedPreferences.OnSharedPreferenceChangeListener prefListener;
-    private MovieAdapter mMovieAdapter;
+    private static final String DETAILFRAGMENT_TAG = "DFTAG";
+
+    private boolean mTwoPane;
+    private String mSortBy;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Retrieve the current connection information
-        ConnectivityManager connMgr = (ConnectivityManager) getSystemService(
-                Context.CONNECTIVITY_SERVICE);
-        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+        // Get the sort order
+        mSortBy = Utility.getPreferredSort(this);
 
-        // If there is currently a network connection, populate the GridView
-        if(networkInfo != null && networkInfo.isConnected()) {
-
-            // Show the loading spinner while the information is being received
-            ProgressBar loadingBar = (ProgressBar) findViewById(R.id.loading_spinner);
-            loadingBar.setVisibility(View.VISIBLE);
-
-            // Initialize the loader used to retrieve the movie information
-            getSupportLoaderManager().initLoader(MOVIE_LOADER_ID, null, this);
-
-            // Get the preferences
-            SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-
-            // Create an OnPreferenceChange listener to reset the loader
-            prefListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
-                @Override
-                public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-                    // If the Sort By key has been changed, reset the loader
-                    if (key.equals(getString(R.string.pref_sort_by_key))) {
-                        getSupportLoaderManager().restartLoader(MOVIE_LOADER_ID, null, MainActivity.this);
-                    }
-                }
-            };
-            // Attach the OnPreferenceChange listener
-            sharedPrefs.registerOnSharedPreferenceChangeListener(prefListener);
-
-            GridView gridview = (GridView) findViewById(R.id.gridview);
-            // If the gird is not empty, attach onItemClickListeners to send an intent to
-            // open the DetailActivity
-            if (gridview != null) {
-                gridview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                    public void onItemClick(AdapterView<?> parent, View v,
-                                            int position, long id) {
-                        Movie movie = mMovieAdapter.getItem(position);
-                        Intent detailIntent = new Intent(MainActivity.this, DetailActivity.class);
-                        detailIntent.putExtra("Movie", movie);
-                        startActivity(detailIntent);
-                    }
-                });
+        if (findViewById(R.id.movie_detail_container) != null) {
+            // The detail container view will be present only in the large-screen layouts
+            // (res/layout-sw600dp). If this view is present, then the activity should be in
+            // two-pane mode.
+            mTwoPane = true;
+            // In two-pane mode, show the detail view in this activity by adding or replacing
+            // the detail fragment using a fragment transaction
+            if (savedInstanceState == null) {
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.movie_detail_container, new DetailFragment(), DETAILFRAGMENT_TAG)
+                        .commit();
             }
-
         } else {
-            // Else if there is no internet connection, display the no connection text
-            TextView noNetwork = (TextView) findViewById(R.id.no_connection_textview);
-            noNetwork.setVisibility(View.VISIBLE);
+            mTwoPane = false;
         }
-    }
-
-    /**
-     * Updates the GridView
-     * @param movies a List of Movies to populate the GridView with
-     */
-    private void updateUi(final List<Movie> movies) {
-
-        GridView gridview = (GridView) findViewById(R.id.gridview);
-        mMovieAdapter = new MovieAdapter(this, movies);
-
-        // If the GridView exists, set the adapter
-        if (gridview != null) {
-            gridview.setAdapter(mMovieAdapter);
-        } else {
-            // Else, set the empty view text
-            gridview.setEmptyView(findViewById(R.id.no_content_textview));
-        }
-    }
-
-    @Override
-    public Loader<List<Movie>> onCreateLoader(int id, Bundle args) {
-
-        // Get the preferences
-        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-
-        // Find out which method the user would like to sort by
-        String orderBy = sharedPrefs.getString(
-                getString(R.string.pref_sort_by_key),
-                getString(R.string.pref_sort_by_default)
-        );
-
-        // String values to append to the request URL
-        final String API_KEY = "api_key";
-        final String API_VALUE = ""; // Insert TheMovieDB API key here
-        final String MOVIE_DB_REQUEST_URL = "http://api.themoviedb.org/3/movie/";
-        final String POPULAR = "popular?";
-        final String TOP_RATED = "top_rated?";
-
-        // Initialize a StringBuilder using the base Movie DB API query URL
-        StringBuilder baseString = new StringBuilder(MOVIE_DB_REQUEST_URL);
-
-        // If the sort by value is the default (Popular), append corresponding API query
-        if (orderBy.equals(getString(R.string.pref_sort_by_default))) {
-            baseString.append(POPULAR);
-        } else {
-            // Else, apply the Top Rated API query
-            baseString.append(TOP_RATED);
-        }
-
-        // Create a Uri and append the API key parameter
-        Uri baseUri = Uri.parse(baseString.toString());
-        Uri.Builder uriBuilder = baseUri.buildUpon().appendQueryParameter(API_KEY, API_VALUE);
-
-        // Return the MovieLoader using the URI API query
-        return new MovieLoader(this, uriBuilder.toString());
-
-    }
-
-    @Override
-    public void onLoadFinished(Loader<List<Movie>> loader, List<Movie> data) {
-
-        if (data == null) {
-            return;
-        }
-
-        // Once the loading is completed, hide the loading spinner
-        ProgressBar loadingBar = (ProgressBar) findViewById(R.id.loading_spinner);
-        loadingBar.setVisibility(View.GONE);
-
-        // and update the UI with the newly retrieved data
-        updateUi(data);
-
-    }
-
-    @Override
-    public void onLoaderReset(Loader<List<Movie>> loader) {
-        // On loader reset, update the UI with an empty list of movies to refresh the list
-        updateUi(new ArrayList<Movie>());
     }
 
     @Override
@@ -195,4 +69,61 @@ public class MainActivity extends AppCompatActivity implements
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        String sortBy = Utility.getPreferredSort(this);
+        // Update the sort order and reflect changes in both the main and detail fragments
+        if (sortBy != null && !sortBy.equals(mSortBy)) {
+            MainFragment mainFragment = (MainFragment)getSupportFragmentManager().findFragmentById(R.id.fragment_main);
+            if (mainFragment != null) {
+                mainFragment.onSortOrderChanged();
+            }
+            DetailFragment detailFragment = (DetailFragment) getSupportFragmentManager().findFragmentByTag(DETAILFRAGMENT_TAG);
+            if (detailFragment != null) {
+                // Clear out the previously selected movie
+                FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+                fragmentTransaction.detach(detailFragment);
+                fragmentTransaction.attach(detailFragment);
+                fragmentTransaction.commit();
+            }
+            mSortBy = sortBy;
+        }
+    }
+
+    @Override
+    public void onItemSelected(Movie movie) {
+        if (mTwoPane) {
+            // In two-pane mode, show the detail view in this activity by adding or replacing
+            // the detail fragment using a fragment transaction
+            Bundle args = new Bundle();
+            args.putParcelable(DetailFragment.DETAIL_MOVIE, movie);
+
+            DetailFragment fragment = new DetailFragment();
+            fragment.setArguments(args);
+
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.movie_detail_container, fragment, DETAILFRAGMENT_TAG)
+                    .commit();
+        } else {
+            // Otherwise, create a new intent to open the DetailActivity
+            Intent intent = new Intent(this, DetailActivity.class)
+                    .putExtra(DetailFragment.DETAIL_MOVIE, movie);
+            startActivity(intent);
+        }
+    }
+
+    /*
+     * Handles when a Movie has been removed from Favorites in two-pane mode if the Favorites
+     * are currently opened
+     */
+    @Override
+    public void onUnfavorite() {
+        if (mTwoPane) {
+            if (Utility.getPreferredSort(this).equals("favorites")) {
+                MainFragment mainFragment = (MainFragment)getSupportFragmentManager().findFragmentById(R.id.fragment_main);
+                mainFragment.onSortOrderChanged();
+            }
+        }
+    }
 }

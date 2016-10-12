@@ -16,6 +16,7 @@ public class MovieLoader extends AsyncTaskLoader<List<Movie>> {
 
     // Global variable for the URL used to send the request
     private String mUrl;
+    private Context mContext;
 
     /**
      * Constructor
@@ -25,6 +26,7 @@ public class MovieLoader extends AsyncTaskLoader<List<Movie>> {
     public MovieLoader (Context context, String url) {
         super(context);
         mUrl = url;
+        mContext = context;
     }
 
     @Override
@@ -38,7 +40,10 @@ public class MovieLoader extends AsyncTaskLoader<List<Movie>> {
         if (mUrl == null) {
             return null;
         }
-        // Return a list of Movie objects
-        return QueryUtils.fetchMovieData(mUrl);
+        if (mUrl.contains("popular") || mUrl.contains("top_rated")) {
+            // Return a list of Movie objects
+            return QueryUtils.fetchMovieData(mUrl);
+        }
+        return QueryUtils.fetchFavoritesData(Utility.getFavorites(mContext), mUrl);
     }
 }

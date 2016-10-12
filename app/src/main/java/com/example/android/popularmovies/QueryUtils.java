@@ -16,14 +16,15 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Class filled with useful methods for connecting to a URL, sending a query, retrieving the
  * JSON response, and parsing the response into Movie objects that may be used to populate the
- * {@link MainActivity}.
+ * {@link MainFragment} in addition to Movie trailers and reviews for {@link DetailFragment}.
  *
  * @author Chase Strackbein
- * @version 1.0
+ * @version 2.0
  * @since 2016-09-14
  */
 public final class QueryUtils {
@@ -62,13 +63,14 @@ public final class QueryUtils {
             // user rating, then add a new Movie using those parameters to the ArrayList
             for (int i=0; i<results.length(); i++) {
                 JSONObject movie = results.getJSONObject(i);
-                String title = movie.getString("original_title");
+                String movieId = movie.getString("id");
+                String title = movie.getString("title");
                 String posterUrl = BASE_IMAGE_URL + movie.getString("poster_path");
                 String synopsis = movie.getString("overview");
                 String releaseDate = movie.getString("release_date");
                 double userRating = movie.getDouble("vote_average");
 
-                movies.add(new Movie(title, posterUrl, synopsis, releaseDate, userRating));
+                movies.add(new Movie(movieId, title, posterUrl, synopsis, releaseDate, userRating));
             }
 
         } catch (JSONException e) {
@@ -81,11 +83,97 @@ public final class QueryUtils {
     }
 
     /**
+     * Return a single {@link Movie} object that has been build up from parsing a JSON response
+     * @param moviedbData
+     * @return
+     */
+    public static Movie extractMovie(String moviedbData) {
+
+        try {
+
+            // Base url for TheMovieDB poster images
+            final String BASE_IMAGE_URL = "http://image.tmdb.org/t/p/w185";
+
+            // Create JSONObject out of JSON response string
+            JSONObject movie = new JSONObject(moviedbData);
+
+            // Extract the movie's title, poster URL, synopsis, release date, and
+            // user rating, then create a new Movie object using those parameters
+            String movieId = movie.getString("id");
+            String title = movie.getString("title");
+            String posterUrl = BASE_IMAGE_URL + movie.getString("poster_path");
+            String synopsis = movie.getString("overview");
+            String releaseDate = movie.getString("release_date");
+            double userRating = movie.getDouble("vote_average");
+
+            return new Movie(movieId, title, posterUrl, synopsis, releaseDate, userRating);
+
+        } catch (JSONException e) {
+            // Catch any JSONException errors and print them to the log
+            Log.e(LOG_TAG, "Problem parsing the movie JSON results", e);
+        }
+
+        return null;
+    }
+
+    /**
      * Facilitates the creation of the query URL, URL connection, and JSON parsing
      * @param requestUrl a String to be used as the query URL
      * @return a list of {@link Movie} objects that have been parsed from the JSON response
      */
     public static List<Movie> fetchMovieData(String requestUrl) {
+
+        // Create a URL object from the String
+        URL url = createUrl(requestUrl + "&language=en-US");
+
+        // Initialize response to null
+        String jsonResponse = null;
+
+        // Attempt to connect to the URL and read the response
+        try {
+            jsonResponse = makeHttpRequest(url);
+        } catch (IOException e) {
+            // Catch and log any IOExceptions
+            Log.e(LOG_TAG, "Error closing input stream", e);
+        }
+
+        // Return the list of extracted movies
+        return extractMovies(jsonResponse);
+    }
+
+    /**
+     * Facilitates the creation of the query URL and URL connection for Favorites
+     * @param favorites the stored list of Favorites
+     * @param requestUrl a String to be used as the query URL
+     * @return a list of {@link Movie} objects that have been parsed from the JSON response
+     */
+    public static List<Movie> fetchFavoritesData(Set<String> favorites, String requestUrl) {
+        // Create an empty list of Movies
+        List<Movie> favMovies = new ArrayList<>();
+        // For each Movie ID in Favorites, fetch its data
+        for (String movieId : favorites) {
+            URL url = createUrl(requestUrl + movieId + "?api_key=" + BuildConfig.TMDB_API_KEY
+                    + "&language=en-US");
+            String jsonResponse = null;
+            try {
+                jsonResponse = makeHttpRequest(url);
+            } catch (IOException e) {
+                Log.e(LOG_TAG, "Error closing input stream", e);
+            }
+            // Extract a Movie object from the data and add it to the list
+            favMovies.add(extractMovie(jsonResponse));
+        }
+
+        // Return the list of extracted movies
+        return favMovies;
+    }
+
+    /**
+     * Facilitates the creation of the query URL and URL connection for a movie's trailers and reviews
+     * @param requestUrl a String to be used as the query URL
+     * @return a JSON response to be parsed in a separate method
+     */
+    public static String fetchMovieExtras(String requestUrl) {
 
         // Create a URL object from the String
         URL url = createUrl(requestUrl);
@@ -101,8 +189,8 @@ public final class QueryUtils {
             Log.e(LOG_TAG, "Error closing input stream", e);
         }
 
-        // Return the list of extracted movies
-        return extractMovies(jsonResponse);
+        // We return the raw JSON response to be parsed elsewhere
+        return jsonResponse;
     }
 
     /**

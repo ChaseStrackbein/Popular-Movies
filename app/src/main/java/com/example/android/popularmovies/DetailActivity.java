@@ -9,34 +9,34 @@ import android.widget.TextView;
 import com.squareup.picasso.Picasso;
 
 /**
- * Class used to retrieve and populate information in the details screen
+ * Class used to hold the {@link DetailFragment} class
  *
  * @author Chase Strackbein
- * @version 1.0
+ * @version 2.0
  * @since 2016-09-16
  */
 public class DetailActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = DetailActivity.class.getSimpleName();
-    private Movie mMovie;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
 
-        // Retrieve the intent used to call this activity
-        Intent intent = this.getIntent();
-        // If there is an intent and contains data, extract the Movie info
-        if(intent != null && intent.hasExtra("Movie")) {
-            mMovie = (Movie) intent.getSerializableExtra("Movie");
-            ((TextView) findViewById(R.id.title_text_view)).setText(mMovie.getTitle());
-            ((TextView) findViewById(R.id.release_text_view)).setText(mMovie.getYear());
-            ((TextView) findViewById(R.id.rating_text_view)).setText(mMovie.getRatingAsString());
-            ((TextView) findViewById(R.id.synopsis_text_view)).setText(mMovie.getSynopsis());
-            Picasso.with(getApplicationContext()).load(mMovie.getPosterUrl()).
-                    into((ImageView) findViewById(R.id.poster_image_view));
+        if (savedInstanceState == null) {
+            // Create a bundle out of the Movie object passed to this activity
+            Bundle arguments = new Bundle();
+            arguments.putParcelable(DetailFragment.DETAIL_MOVIE, getIntent().getParcelableExtra(
+                    DetailFragment.DETAIL_MOVIE));
 
+            // Create the detail fragment and add it to the activity using a fragment transaction
+            DetailFragment fragment = new DetailFragment();
+            fragment.setArguments(arguments);
+
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.movie_detail_container, fragment)
+                    .commit();
         }
     }
 }
